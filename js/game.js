@@ -19,6 +19,7 @@
     sens: "mittel",   // hoch | mittel | niedrig
     vorspielen: false,
     oktave: false,    // true = Oktave muss stimmen
+    tuneCents: 0,     // Stimmungs-Versatz in Cent (0 = a′ 440 Hz)
   };
 
   let settings = loadJSON("nj_settings", { ...DEFAULTS });
@@ -147,6 +148,10 @@
         }
       }
       st.inputMode = inputMode;
+      Theory.setTuning(settings.tuneCents || 0);
+      if (inputMode !== "mic") {
+        buildPiano(settings.clef === "both" ? "treble" : settings.clef);
+      }
 
       // UI vorbereiten
       showScreen("Game");
@@ -208,6 +213,11 @@
     }
     st.target = cand[(Math.random() * cand.length) | 0];
     Notation.draw($("#staff"), st.target, st.key);
+    // Bei Oktavpflicht + "Beide": Tastatur dem Schlüssel der neuen Note anpassen
+    if (st.inputMode !== "mic" && settings.oktave &&
+        $("#piano").dataset.clef !== st.target.clef) {
+      buildPiano(st.target.clef);
+    }
     if (settings.vorspielen) {
       setTimeout(() => { if (st && st.running) playTarget(); }, 250);
     }
@@ -333,28 +343,55 @@
   }
 
   // ---------- Bildschirm-Klaviatur ----------
-  function tapNote(pc) {
+  const WHITE_PCS = [0, 2, 4, 5, 7, 9, 11];
+  function isWhite(m) { return WHITE_PCS.indexOf(((m % 12) + 12) % 12) >= 0; }
+
+  // Beschriftung der C-Tasten (Helmholtz: C c c′ c″ c‴)
+  function cLabel(midi) {
+    const oct = Math.floor(midi / 12) - 1;
+    return { 1: "C₁", 2: "C", 3: "c", 4: "c′", 5: "c″", 6: "c‴" }[oct] || "C" + oct;
+  }
+
+  function tapMidi(m) {
     if (!st || !st.running || st.paused) return;
     const now = performance.now();
     if (now < st.tapLock) return;
     st.tapLock = now + 280;
+    judge(m, "tap");
+  }
+
+  // Kompakte Tastatur liefert nur die Tonklasse: auf die zum Ziel
+  // nächstgelegene Oktave abbilden.
+  function tapPc(pc) {
+    if (!st || !st.running || st.paused) return;
     const t = st.target;
     let d = (((pc - t.midi) % 12) + 12) % 12;
     if (d > 6) d -= 12;
-    judge(t.midi + d, "tap");
+    tapMidi(t.midi + d);
   }
 
-  function buildPiano() {
+  // Oktave egal  -> kompakte 1-Oktav-Tastatur (Tonklassen).
+  // Oktavpflicht -> lange Tastatur über den Notenbereich des Schlüssels,
+  //                 C-Tasten beschriftet, c′ (mittleres C) markiert.
+  function buildPiano(clef) {
     const piano = $("#piano");
+    piano.innerHTML = "";
+    if (settings.oktave) buildPianoRange(piano, clef || "treble");
+    else buildPianoCompact(piano);
+  }
+
+  function buildPianoCompact(piano) {
+    piano.dataset.clef = "pc";
     const whites = document.createElement("div");
     whites.className = "whites";
+    whites.style.gridTemplateColumns = "repeat(7, 1fr)";
     const WHITE = [[0, "C"], [2, "D"], [4, "E"], [5, "F"], [7, "G"], [9, "A"], [11, "H"]];
     WHITE.forEach(([pc, name]) => {
       const b = document.createElement("button");
       b.className = "wk";
       b.textContent = name;
       b.dataset.pc = pc;
-      b.addEventListener("pointerdown", e => { e.preventDefault(); tapNote(pc); });
+      b.addEventListener("pointerdown", e => { e.preventDefault(); tapPc(pc); });
       whites.appendChild(b);
     });
     piano.appendChild(whites);
@@ -365,8 +402,52 @@
       b.textContent = name;
       b.dataset.pc = pc;
       b.style.left = (k * (100 / 7) - 4.75) + "%";
-      b.addEventListener("pointerdown", e => { e.preventDefault(); tapNote(pc); });
+      b.style.width = "9.5%";
+      b.addEventListener("pointerdown", e => { e.preventDefault(); tapPc(pc); });
       piano.appendChild(b);
+    });
+  }
+
+  function buildPianoRange(piano, clef) {
+    piano.dataset.clef = clef;
+    const pool = (st && st.pools)
+      ? st.pools[clef]
+      : Theory.pool(clef, settings.range, currentKeyInfo());
+    let lo = pool[0].midi;
+    let hi = pool[pool.length - 1].midi;
+    while (!isWhite(lo)) lo--;
+    while (!isWhite(hi)) hi++;
+    const whites = [];
+    for (let m = lo; m <= hi; m++) if (isWhite(m)) whites.push(m);
+    const N = whites.length;
+    const grid = document.createElement("div");
+    grid.className = "whites";
+    grid.style.gridTemplateColumns = "repeat(" + N + ", 1fr)";
+    whites.forEach(m => {
+      const b = document.createElement("button");
+      b.className = "wk";
+      b.dataset.midi = m;
+      if (m % 12 === 0) {
+        b.textContent = cLabel(m);
+        if (m === 60) b.classList.add("mark");
+      }
+      b.addEventListener("pointerdown", e => { e.preventDefault(); tapMidi(m); });
+      grid.appendChild(b);
+    });
+    piano.appendChild(grid);
+    const wPct = 100 / N;
+    whites.forEach((m, i) => {
+      if (i === 0) return;
+      const black = m - 1;
+      if (black > whites[i - 1]) {
+        const b = document.createElement("button");
+        b.className = "bk";
+        b.dataset.midi = black;
+        b.style.left = (i * wPct - wPct * 0.31) + "%";
+        b.style.width = (wPct * 0.62) + "%";
+        b.addEventListener("pointerdown", e => { e.preventDefault(); tapMidi(black); });
+        piano.appendChild(b);
+      }
     });
   }
 
@@ -445,6 +526,60 @@
     }
   });
 
+  // ---------- Stimmung / Kalibrierung ----------
+  function updateTuneUI() {
+    $("#inpA4").value = (440 * Math.pow(2, (settings.tuneCents || 0) / 1200)).toFixed(1);
+  }
+
+  // Referenz-C einspielen: misst die Abweichung des Instruments in Cent
+  // (funktioniert in jeder Oktave, auch bei einen Halbton verstimmten Klavieren)
+  async function calibrate() {
+    ensureCtx();
+    try { await audioCtx.resume(); } catch (e) {}
+    try {
+      await Pitch.init(audioCtx, TEST);
+    } catch (e) {
+      toast("Mikrofon nicht verfügbar – Kalibrierung nicht möglich.");
+      return;
+    }
+    Pitch.setGate(GATES[settings.sens] || GATES.mittel);
+    showOverlay("🎹<small>Jetzt ein C spielen oder singen …</small>");
+    const offs = [];
+    const t0 = performance.now();
+    await new Promise(res => {
+      const iv = setInterval(() => {
+        const r = Pitch.read();
+        if (r.freq > 0) {
+          const mf = 69 + 12 * Math.log2(r.freq / 440); // roh, ohne Stimmung
+          offs.push((mf - Math.round(mf / 12) * 12) * 100);
+        }
+        if (offs.length >= 30 || performance.now() - t0 > 6000) {
+          clearInterval(iv);
+          res();
+        }
+      }, 25);
+    });
+    hideOverlay();
+    Pitch.stop();
+    if (offs.length < 10) {
+      toast("Keinen Ton erkannt – bitte noch einmal versuchen.");
+      return;
+    }
+    offs.sort((a, b) => a - b);
+    const off = Math.round(offs[(offs.length / 2) | 0]);
+    if (Math.abs(off) > 260) {
+      toast("Das klang nicht nach einem C – Stimmung nicht geändert.");
+      return;
+    }
+    settings.tuneCents = off;
+    saveJSON("nj_settings", settings);
+    Theory.setTuning(off);
+    updateTuneUI();
+    const a4 = (440 * Math.pow(2, off / 1200)).toFixed(1);
+    toast("Stimmung übernommen: " + (off > 0 ? "+" : "") + off +
+      " Cent (a′ ≈ " + a4 + " Hz)", 5000);
+  }
+
   // ---------- Einstellungen: UI ----------
   function wireSettings() {
     // Segment-Buttons
@@ -493,6 +628,25 @@
       updateRekordLine();
     });
 
+    // Stimmung
+    $("#inpA4").addEventListener("change", () => {
+      const v = parseFloat($("#inpA4").value);
+      if (v >= 392 && v <= 466) {
+        settings.tuneCents = Math.round(1200 * Math.log2(v / 440));
+        saveJSON("nj_settings", settings);
+        Theory.setTuning(settings.tuneCents);
+      }
+      updateTuneUI();
+    });
+    $("#btnTuneReset").addEventListener("click", () => {
+      settings.tuneCents = 0;
+      saveJSON("nj_settings", settings);
+      Theory.setTuning(0);
+      updateTuneUI();
+      toast("Stimmung zurückgesetzt: a′ = 440 Hz", 2500);
+    });
+    $("#btnCalib").addEventListener("click", calibrate);
+
     $("#btnStart").addEventListener("click", startGame);
     $("#btnQuit").addEventListener("click", quitGame);
     $("#btnReplay").addEventListener("click", () => { if (st && st.running) playTarget(); });
@@ -515,6 +669,7 @@
     $("#chkPlay").checked = !!settings.vorspielen;
     $("#chkOct").checked = !!settings.oktave;
     $("#fieldSens").classList.toggle("hidden", settings.input === "tap");
+    updateTuneUI();
     updateRekordLine();
   }
 
@@ -534,9 +689,19 @@
     const T = [];
     const eq = (name, got, want) => T.push({ name, ok: got === want, got, want });
 
+    const savedTune = settings.tuneCents || 0;
+    Theory.setTuning(0);
+
     eq("freqOf A4", Math.round(Theory.freqOf(69)), 440);
     eq("midiFromFreq 442", Theory.midiFromFreq(442), 69);
     eq("centsOff 445", Theory.centsOff(445, 69) > 0, true);
+
+    Theory.setTuning(100);
+    eq("Stimmung +100 Cent: a′ ≈ 466 Hz", Math.round(Theory.freqOf(69)), 466);
+    eq("Stimmung +100 Cent: 466,2 Hz → A4", Theory.midiFromFreq(466.16), 69);
+    Theory.setTuning(-100);
+    eq("Stimmung −100 Cent: 415,3 Hz → A4", Theory.midiFromFreq(415.3), 69);
+    Theory.setTuning(0);
 
     const ck = Theory.keyById("C");
     const p = Theory.pool("treble", "mittel", ck);
@@ -577,6 +742,7 @@
     const silent = new Float32Array(2048);
     eq("ACF Stille -> -1", Pitch.autoCorrelate(silent, sr).freq, -1);
 
+    Theory.setTuning(savedTune);
     return T;
   }
 
@@ -589,6 +755,7 @@
       toast("Fehler: vexflow.js konnte nicht geladen werden.", 8000);
     }
     wireSettings();
+    Theory.setTuning(settings.tuneCents || 0);
     buildPiano();
     refreshSettingsUI();
   }
@@ -599,7 +766,7 @@
   // Debug-/Test-Schnittstelle
   window.App = {
     runSelfTests,
-    tapNote,
+    tapPc, tapMidi,
     setTestFreq: f => Pitch.setTestFreq(f),
     state: () => st,
     settings: () => settings,

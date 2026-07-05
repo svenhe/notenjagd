@@ -32,10 +32,15 @@ wählen – dann läuft das Spiel ohne Mikrofon mit der Bildschirm-Klaviatur.
 | Eingabe | Mikrofon (Gesang oder Instrument), Bildschirm-Tasten oder beides |
 | Empfindlichkeit | wie laut es sein muss, damit ein Ton zählt (bei Störgeräuschen „Niedrig“ wählen) |
 | Ton auch vorspielen | die gesuchte Note wird zusätzlich vorgespielt (🔊-Knopf zum Wiederholen) |
-| Oktave muss stimmen | aus = nur der Notenname muss stimmen (gut für Gesang), an = exakte Oktave nötig (gut fürs Klavier) |
+| Oktave muss stimmen | aus = nur der Notenname muss stimmen (gut für Gesang), an = exakte Oktave nötig (gut fürs Klavier). Bei „an“ wird die Bildschirm-Klaviatur automatisch lang (über den ganzen Notenbereich des Schlüssels), mit beschrifteten C-Tasten und farblich markiertem c′ (mittlerem C) |
+| Stimmung (Kammerton a′) | Standard 440 Hz. Für anders gestimmte Instrumente: a′ direkt eingeben (392–466 Hz) oder **🎹 C einspielen** drücken und ein beliebiges C spielen/singen – die App misst die Abweichung selbst (funktioniert auch bei einen Halbton tiefer gestimmten Klavieren). Wirkt auf Erkennung **und** Vorspielen |
 
 ## Tipps
 
+- Ein Ton gilt als getroffen, wenn er näher als ein halber Halbton (±50 Cent)
+  am Sollton liegt und ca. 0,1 s stabil klingt. Leicht verstimmte Klaviere
+  (438–442 Hz) sind damit automatisch abgedeckt; für stärker oder anders
+  gestimmte Instrumente die Stimmungs-Kalibrierung benutzen.
 - Während App-Töne abgespielt werden, pausiert die Erkennung kurz – das
   verhindert, dass das Spiel sein eigenes Feedback „hört“.
 - Ein gehaltener falscher Ton kostet nur **einen** Punkt. Erst nach einer kurzen

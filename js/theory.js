@@ -101,12 +101,20 @@ const Theory = (() => {
     return { name: (preferFlat ? PC_FLAT : PC_SHARP)[pc], oct, pc };
   }
 
+  // Stimmung: globaler Versatz in Cent (0 = a′ 440 Hz). Wirkt auf
+  // Erkennung UND Tonausgabe, damit App und Instrument zusammenpassen.
+  let A4 = 440;
+  function setTuning(cents) {
+    A4 = 440 * Math.pow(2, (cents || 0) / 1200);
+  }
+  function getA4() { return A4; }
+
   function freqOf(midi) {
-    return 440 * Math.pow(2, (midi - 69) / 12);
+    return A4 * Math.pow(2, (midi - 69) / 12);
   }
 
   function midiFromFreq(f) {
-    return Math.round(69 + 12 * Math.log2(f / 440));
+    return Math.round(69 + 12 * Math.log2(f / A4));
   }
 
   // Abweichung in Cents von der nächstliegenden MIDI-Note
@@ -119,5 +127,6 @@ const Theory = (() => {
     keyById, keyAccMap, pool,
     germanName, germanFromMidi,
     midiOf, freqOf, midiFromFreq, centsOff,
+    setTuning, getA4,
   };
 })();

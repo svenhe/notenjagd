@@ -336,3 +336,24 @@ button.mid.wide { width: 100%; margin-top: 10px; }
   max-width: 92%;
   text-align: center;
 }
+
+/* ---------- Stimmung ---------- */
+.tunerow { display: flex; gap: 8px; align-items: center; }
+.tunerow input[type="number"] {
+  width: 92px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--deep);
+  color: var(--txt);
+  font-size: 15px;
+}
+.tunerow .unit { color: var(--muted); margin-right: 4px; }
+.tunerow button.mid { white-space: nowrap; }
+
+/* markiertes mittleres C (c′) auf der langen Tastatur */
+.piano .wk.mark {
+  background: #fef3c7;
+  box-shadow: inset 0 -5px 0 var(--accent);
+  font-weight: 800;
+}
