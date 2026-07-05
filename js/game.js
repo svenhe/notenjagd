@@ -666,6 +666,10 @@
     });
     $("#selKey").value = settings.key;
     $("#selDur").value = String(settings.dur);
+    if ($("#selDur").selectedIndex < 0) {
+      settings.dur = 60;
+      $("#selDur").value = "60";
+    }
     $("#chkPlay").checked = !!settings.vorspielen;
     $("#chkOct").checked = !!settings.oktave;
     $("#fieldSens").classList.toggle("hidden", settings.input === "tap");
