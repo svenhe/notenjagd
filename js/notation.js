@@ -2,9 +2,11 @@
 "use strict";
 
 const Notation = (() => {
-  const W = 560;
-  const H = 252;
-  const STAVE_Y = 66;
+  // Kompakter viewBox => Notenbild erscheint groß. Seitenverhältnis passend
+  // zur Kartengröße (560:252) in style.css.
+  const H = 160;
+  const W = Math.round(H * (560 / 252));
+  const STAVE_Y = 20; // Mittellinie des Systems landet bei H/2
 
   // note: { vf: "f#/4", clef: "treble"|"bass" }, key: { vf: "D", accs: n }
   function draw(container, note, key) {
@@ -19,7 +21,7 @@ const Notation = (() => {
     renderer.resize(W, H);
     const ctx = renderer.getContext();
 
-    const staveW = 230 + 14 * (key.accs || 0);
+    const staveW = 205 + 14 * (key.accs || 0);
     const x = Math.max(4, Math.round((W - staveW) / 2));
     const stave = new VF.Stave(x, STAVE_Y, staveW);
     stave.addClef(note.clef);

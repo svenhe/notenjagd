@@ -108,7 +108,6 @@
       // Erkennungs-Zustandsmaschine
       hist: [], stableNote: null, lastEvent: null, lastEventAt: 0, silence: 0,
       tapLock: 0,
-      lastTick: 0,
     };
   }
 
@@ -168,7 +167,7 @@
       st.muteUntil = performance.now() + 300;
       nextNote();
       requestWL();
-      requestAnimationFrame(loop);
+      startLoop();
     } finally {
       btn.disabled = false;
     }
@@ -219,18 +218,24 @@
     addMute(Sound.note(st.target.midi));
   }
 
-  function loop(ts) {
-    if (!st || !st.running) return;
-    if (ts - st.lastTick >= 25) {
-      st.lastTick = ts;
-      if (st.inputMode !== "tap" && st.micOK) {
-        handleFrame(Pitch.read());
-      }
+  // setInterval statt requestAnimationFrame: läuft auch weiter, wenn der
+  // Browser das Rendern drosselt (Energiesparen, verdeckte Ansicht).
+  let loopIv = null;
+  function startLoop() {
+    stopLoop();
+    loopIv = setInterval(loopTick, 25);
+  }
+  function stopLoop() {
+    if (loopIv) { clearInterval(loopIv); loopIv = null; }
+  }
+  function loopTick() {
+    if (!st || !st.running) { stopLoop(); return; }
+    if (st.inputMode !== "tap" && st.micOK) {
+      handleFrame(Pitch.read());
     }
     const rem = st.endTime - performance.now();
     updateTimeUI(rem);
-    if (rem <= 0) { endGame(); return; }
-    requestAnimationFrame(loop);
+    if (rem <= 0) { stopLoop(); endGame(); }
   }
 
   // ---------- Erkennung: Frame -> Noten-Ereignis ----------
@@ -381,6 +386,7 @@
 
   function endGame() {
     st.running = false;
+    stopLoop();
     Pitch.stop();
     releaseWL();
 
@@ -406,6 +412,7 @@
 
   function quitGame() {
     if (st) st.running = false;
+    stopLoop();
     Pitch.stop();
     releaseWL();
     hideOverlay();
@@ -421,6 +428,7 @@
   function pauseGame() {
     st.running = false;
     st.paused = true;
+    stopLoop();
     st.remaining = st.endTime - performance.now();
     showOverlay("⏸<small>Tippen zum Weiterspielen</small>");
   }
@@ -433,7 +441,7 @@
       st.muteUntil = performance.now() + 500;
       hideOverlay();
       requestWL();
-      requestAnimationFrame(loop);
+      startLoop();
     }
   });
 
@@ -597,6 +605,8 @@
     settings: () => settings,
     setDur: s => { settings.dur = s; },
     start: startGame,
+    // Nur für automatische Tests: n Frames synchron verarbeiten
+    tick: n => { for (let i = 0; i < (n || 1); i++) loopTick(); },
     TEST,
   };
 })();
