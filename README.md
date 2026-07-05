@@ -8,18 +8,31 @@ Einstellungs-Kombination gespeichert.
 
 ## Starten
 
-**Am PC:** `Notenlernspiel.html` doppelklicken (oder mit Chrome öffnen).
-Beim ersten Spielstart den Mikrofon-Zugriff erlauben.
+**Am einfachsten (PC wie Handy/Tablet):** im Browser öffnen:
 
-**Auf Android-Handy/-Tablet:**
-1. Die eine Datei `Notenlernspiel.html` aufs Gerät kopieren
-   (USB-Kabel, E-Mail an sich selbst, Cloud-Speicher …), z. B. in den Ordner *Download*.
-2. In Chrome öffnen: entweder über den Dateimanager → „Öffnen mit → Chrome“,
-   oder in der Adresszeile eingeben: `file:///sdcard/Download/Notenlernspiel.html`
-3. Mikrofon-Zugriff erlauben. Fertig – funktioniert komplett offline.
+**➜ https://svenhe.github.io/notenjagd/**
 
-Falls das Mikrofon auf einem Gerät nicht freigegeben wird: Eingabe **„Tasten“**
-wählen – dann läuft das Spiel ohne Mikrofon mit der Bildschirm-Klaviatur.
+Einfach den Link antippen/aufrufen, Mikrofon-Zugriff erlauben – fertig.
+Kein Datei-Transfer nötig. Diese Version braucht beim Spielen selbst kein
+Internet mehr (alles läuft im Browser), nur zum ersten Laden der Seite.
+
+> Hintergrund: Chrome erlaubt Mikrofon-Zugriff nur auf „sicheren“ Adressen
+> (`https://` oder `localhost`). Lokale Dateien (`file://…`, z. B. wenn man
+> die HTML-Datei direkt aufs Handy kopiert) bekommen auf Android **keine**
+> Mikrofon-Berechtigung – das Einstellungssymbol neben der Adresse zeigt dann
+> nur ein „i“ statt der Berechtigungs-Optionen. Deshalb der gehostete Link.
+
+**Alternative, komplett offline (ohne Internet, auch für den Erstaufruf):**
+`Notenlernspiel.html` herunterladen und direkt öffnen. Am PC per Doppelklick.
+Auf Android nur bedingt zu empfehlen, da dort wie beschrieben **kein
+Mikrofon** funktioniert (Bildschirm-Tasten gehen aber trotzdem):
+1. Datei aufs Gerät kopieren (USB-Kabel, E-Mail an sich selbst …).
+   **Nicht über Google Drive hochladen** – Drive konvertiert `.html`-Dateien
+   gerne automatisch in ein Google Doc, danach lässt sich nur noch ein PDF
+   herunterladen. Falls doch nötig: Datei vorher in eine `.zip` packen.
+2. Im Dateimanager (z. B. „Files by Google“) antippen → „Öffnen mit → Chrome“.
+3. Eingabe auf **„Tasten“** stellen (Mikrofon geht über `file://` nicht) –
+   dann läuft das Spiel mit der Bildschirm-Klaviatur.
 
 ## Einstellungen
 
